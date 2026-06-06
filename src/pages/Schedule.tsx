@@ -3,18 +3,48 @@ import { Calendar, Clock, User, Phone, AlertTriangle, Check, X, Edit3, ChevronRi
 import { useStore } from '@/store/useStore';
 
 export default function Schedule() {
-  const { schedules, orders } = useStore();
+  const { schedules, confirmShootList, submitReschedule } = useStore();
   const [showReschedule, setShowReschedule] = useState(false);
-  const [shootList, setShootList] = useState(schedules[0]?.shootList || []);
+  const [shootListConfirmed, setShootListConfirmed] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    reason: '',
+    newDate: '',
+  });
+  const [rescheduleSubmitted, setRescheduleSubmitted] = useState(false);
+
+  const schedule = schedules[0];
+  const [shootList, setShootList] = useState(schedule?.shootList || []);
 
   const toggleShootItem = (index: number) => {
+    if (shootListConfirmed) return;
     setShootList((prev) =>
       prev.map((item, i) => (i === index ? { ...item, confirmed: !item.confirmed } : item))
     );
   };
 
-  const schedule = schedules[0];
-  const order = orders.find((o) => o.id === schedule?.orderId);
+  const handleConfirmShootList = () => {
+    if (schedule) {
+      confirmShootList(schedule.id, shootList);
+      setShootListConfirmed(true);
+    }
+  };
+
+  const handleSubmitReschedule = () => {
+    if (schedule && rescheduleForm.reason && rescheduleForm.newDate) {
+      submitReschedule(schedule.id, {
+        reason: rescheduleForm.reason,
+        newDate: rescheduleForm.newDate,
+        status: 'pending',
+      });
+      setRescheduleSubmitted(true);
+      setTimeout(() => {
+        setShowReschedule(false);
+        setRescheduleSubmitted(false);
+      }, 2000);
+    }
+  };
+
+  const currentSchedule = schedules.find(s => s.id === schedule?.id) || schedule;
 
   return (
     <div>
@@ -25,14 +55,39 @@ export default function Schedule() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {currentSchedule?.rescheduleRequest && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-amber-400 font-medium mb-2">改期申请审核中</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-amber-200/70">期望新日期</span>
+                      <span className="text-white">{currentSchedule.rescheduleRequest.newDate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-amber-200/70">改期原因</span>
+                      <span className="text-white">{currentSchedule.rescheduleRequest.reason}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-amber-200/70">审核状态</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md bg-amber-500/20 text-amber-400">
+                        待审核
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">拍摄信息</h2>
-              {order && (
-                <span className="px-3 py-1 text-sm rounded-full bg-purple-500/10 text-purple-400">
-                  拍摄中
-                </span>
-              )}
+              <span className="px-3 py-1 text-sm rounded-full bg-purple-500/10 text-purple-400">
+                拍摄中
+              </span>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -42,7 +97,7 @@ export default function Schedule() {
                 </div>
                 <div>
                   <p className="text-slate-500 text-sm">拍摄日期</p>
-                  <p className="text-white font-medium">{schedule?.shootDate}</p>
+                  <p className="text-white font-medium">{currentSchedule?.shootDate}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -51,7 +106,7 @@ export default function Schedule() {
                 </div>
                 <div>
                   <p className="text-slate-500 text-sm">拍摄时段</p>
-                  <p className="text-white font-medium">{schedule?.shootTime}</p>
+                  <p className="text-white font-medium">{currentSchedule?.shootTime}</p>
                 </div>
               </div>
             </div>
@@ -59,20 +114,28 @@ export default function Schedule() {
             <div className="mt-6 pt-6 border-t border-slate-700/50">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white font-medium">拍摄清单</h3>
-                <span className="text-slate-400 text-sm">
-                  {shootList.filter((i) => i.confirmed).length}/{shootList.length} 已确认
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-slate-400 text-sm">
+                    {shootList.filter((i) => i.confirmed).length}/{shootList.length} 已确认
+                  </span>
+                  {shootListConfirmed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md bg-emerald-500/20 text-emerald-400">
+                      <Check className="w-3 h-3" />
+                      已提交
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="space-y-3">
                 {shootList.map((item, idx) => (
                   <div
                     key={idx}
                     onClick={() => toggleShootItem(idx)}
-                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                       item.confirmed
                         ? 'bg-teal-500/10 border border-teal-500/30'
                         : 'bg-slate-900/50 border border-slate-700 hover:border-slate-600'
-                    }`}
+                    } ${shootListConfirmed ? 'cursor-default' : 'cursor-pointer'}`}
                   >
                     <div
                       className={`w-5 h-5 rounded flex items-center justify-center ${
@@ -103,10 +166,23 @@ export default function Schedule() {
                 <Edit3 className="w-4 h-4" />
                 申请改期
               </button>
-              <button className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
-                <Check className="w-4 h-4" />
-                确认拍摄清单
-              </button>
+              {!shootListConfirmed ? (
+                <button 
+                  onClick={handleConfirmShootList}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                >
+                  <Check className="w-4 h-4" />
+                  确认拍摄清单
+                </button>
+              ) : (
+                <button 
+                  disabled
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500/20 text-emerald-400 font-medium rounded-lg cursor-default"
+                >
+                  <Check className="w-4 h-4" />
+                  拍摄清单已确认
+                </button>
+              )}
             </div>
           </div>
 
@@ -119,7 +195,7 @@ export default function Schedule() {
                 </label>
                 <div className="flex items-center gap-3 px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg">
                   <User className="w-5 h-5 text-slate-500" />
-                  <span className="text-white">{schedule?.contactName}</span>
+                  <span className="text-white">{currentSchedule?.contactName}</span>
                 </div>
               </div>
               <div>
@@ -128,7 +204,7 @@ export default function Schedule() {
                 </label>
                 <div className="flex items-center gap-3 px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg">
                   <Phone className="w-5 h-5 text-slate-500" />
-                  <span className="text-white">{schedule?.contactPhone}</span>
+                  <span className="text-white">{currentSchedule?.contactPhone}</span>
                 </div>
               </div>
               <div>
@@ -137,7 +213,7 @@ export default function Schedule() {
                 </label>
                 <div className="flex items-center gap-3 px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg">
                   <Phone className="w-5 h-5 text-amber-500" />
-                  <span className="text-white">{schedule?.emergencyContact}</span>
+                  <span className="text-white">{currentSchedule?.emergencyContact}</span>
                 </div>
               </div>
             </div>
@@ -210,41 +286,60 @@ export default function Schedule() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">
-                  改期原因
-                </label>
-                <textarea
-                  placeholder="请详细说明改期原因..."
-                  rows={4}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 resize-none"
-                />
+
+            {rescheduleSubmitted ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-teal-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-8 h-8 text-teal-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">改期申请已提交！</h3>
+                <p className="text-slate-400">团队将在24小时内审核您的改期申请，请耐心等待。</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">
-                  期望新日期
-                </label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-teal-500"
-                />
+            ) : (
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    改期原因
+                  </label>
+                  <textarea
+                    value={rescheduleForm.reason}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, reason: e.target.value })}
+                    placeholder="请详细说明改期原因..."
+                    rows={4}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    期望新日期
+                  </label>
+                  <input
+                    type="date"
+                    value={rescheduleForm.newDate}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, newDate: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                  />
+                </div>
               </div>
-            </div>
-            <div className="p-6 border-t border-slate-800 flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowReschedule(false)}
-                className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={() => setShowReschedule(false)}
-                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all"
-              >
-                提交申请
-              </button>
-            </div>
+            )}
+
+            {!rescheduleSubmitted && (
+              <div className="p-6 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowReschedule(false)}
+                  className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSubmitReschedule}
+                  disabled={!rescheduleForm.reason || !rescheduleForm.newDate}
+                  className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  提交申请
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

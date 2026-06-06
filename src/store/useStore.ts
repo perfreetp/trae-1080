@@ -24,9 +24,16 @@ interface AppState {
   setPortfolioCategory: (category: string) => void;
   addRequirement: (req: Requirement) => void;
   updateQuoteStatus: (quoteId: string, status: 'pending' | 'accepted' | 'rejected') => void;
+  addQuote: (quote: Quote) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  signContract: (orderId: string) => void;
+  payDeposit: (orderId: string) => void;
   payBalance: (deliveryId: string) => void;
+  updateCopyrightLicense: (deliveryId: string, license: 'personal' | 'commercial' | 'exclusive') => void;
+  confirmShootList: (scheduleId: string, shootList: { item: string; confirmed: boolean }[]) => void;
+  submitReschedule: (scheduleId: string, reschedule: { reason: string; newDate: string; status: 'pending' | 'approved' | 'rejected' }) => void;
   addReview: (review: Review) => void;
+  addComplaint: (reviewId: string, complaint: { reason: string; evidence: string[]; status: 'pending' | 'processing' | 'resolved' }) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -57,10 +64,26 @@ export const useStore = create<AppState>((set) => ({
       q.id === quoteId ? { ...q, status } : q
     ),
   })),
+
+  addQuote: (quote) => set((state) => ({
+    quotes: [...state.quotes, quote],
+  })),
   
   updateOrderStatus: (orderId, status) => set((state) => ({
     orders: state.orders.map((o) =>
       o.id === orderId ? { ...o, status } : o
+    ),
+  })),
+
+  signContract: (orderId) => set((state) => ({
+    orders: state.orders.map((o) =>
+      o.id === orderId ? { ...o, contractSigned: true } : o
+    ),
+  })),
+
+  payDeposit: (orderId) => set((state) => ({
+    orders: state.orders.map((o) =>
+      o.id === orderId ? { ...o, depositPaid: true, status: 'confirmed' } : o
     ),
   })),
   
@@ -69,8 +92,32 @@ export const useStore = create<AppState>((set) => ({
       d.id === deliveryId ? { ...d, balancePaid: true } : d
     ),
   })),
+
+  updateCopyrightLicense: (deliveryId, license) => set((state) => ({
+    deliveries: state.deliveries.map((d) =>
+      d.id === deliveryId ? { ...d, copyrightLicense: license } : d
+    ),
+  })),
+
+  confirmShootList: (scheduleId, shootList) => set((state) => ({
+    schedules: state.schedules.map((s) =>
+      s.id === scheduleId ? { ...s, shootList } : s
+    ),
+  })),
+
+  submitReschedule: (scheduleId, reschedule) => set((state) => ({
+    schedules: state.schedules.map((s) =>
+      s.id === scheduleId ? { ...s, rescheduleRequest: reschedule } : s
+    ),
+  })),
   
   addReview: (review) => set((state) => ({
     reviews: [...state.reviews, review],
+  })),
+
+  addComplaint: (reviewId, complaint) => set((state) => ({
+    reviews: state.reviews.map((r) =>
+      r.id === reviewId ? { ...r, complaint } : r
+    ),
   })),
 }));

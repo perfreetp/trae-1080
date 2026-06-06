@@ -1,18 +1,28 @@
 import { useState } from 'react';
-import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare, Send, Check } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
+import type { Quote } from '@/types';
 
 export default function Teams() {
-  const { teams, setSelectedTeam, selectedTeam } = useStore();
+  const { teams, setSelectedTeam, selectedTeam, addQuote, requirements } = useStore();
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [inquiryTeam, setInquiryTeam] = useState<typeof teams[0] | null>(null);
+  const [inquirySubmitted, setInquirySubmitted] = useState(false);
   const [filters, setFilters] = useState({
     location: '',
     minPrice: '',
     maxPrice: '',
     minRating: 0,
     insuranceOnly: false,
+  });
+  const [inquiryForm, setInquiryForm] = useState({
+    requirementId: '',
+    budget: '',
+    message: '',
+    packageType: 'standard' as 'basic' | 'standard' | 'premium',
   });
 
   const filteredTeams = teams.filter((team) => {
@@ -27,6 +37,41 @@ export default function Teams() {
     }
     return true;
   });
+
+  const handleOpenInquiry = (team: typeof teams[0]) => {
+    setInquiryTeam(team);
+    setShowInquiryModal(true);
+    setInquirySubmitted(false);
+  };
+
+  const handleSubmitInquiry = () => {
+    if (!inquiryTeam) return;
+
+    const newQuote: Quote = {
+      id: `quote-${Date.now()}`,
+      teamId: inquiryTeam.id,
+      requirementId: inquiryForm.requirementId || requirements[0]?.id || 'req-001',
+      packageType: inquiryForm.packageType,
+      flightHours: inquiryForm.packageType === 'basic' ? 2 : inquiryForm.packageType === 'standard' ? 4 : 6,
+      cameras: inquiryForm.packageType === 'basic' ? 1 : inquiryForm.packageType === 'standard' ? 2 : 3,
+      postProduction: inquiryForm.packageType !== 'basic',
+      deliveryDays: inquiryForm.packageType === 'basic' ? 5 : inquiryForm.packageType === 'standard' ? 7 : 10,
+      totalPrice: Number(inquiryForm.budget) || inquiryTeam.basePrice,
+      status: 'pending',
+      includes: inquiryForm.packageType === 'basic' 
+        ? ['2小时飞行时间', '单机位拍摄', '原片全部交付', '5天交付']
+        : inquiryForm.packageType === 'standard'
+        ? ['4小时飞行时间', '双机位拍摄', '精修30张照片', '3分钟剪辑视频', '7天交付']
+        : ['6小时飞行时间', '三机位电影级拍摄', '精修50张照片', '5分钟电影级剪辑', '10天交付', '版权授权'],
+    };
+
+    addQuote(newQuote);
+    setInquirySubmitted(true);
+    setTimeout(() => {
+      setShowInquiryModal(false);
+      setInquirySubmitted(false);
+    }, 2000);
+  };
 
   return (
     <div>
@@ -132,18 +177,21 @@ export default function Teams() {
         {filteredTeams.map((team) => (
           <div
             key={team.id}
-            onClick={() => setSelectedTeam(team)}
-            className="group bg-slate-800/50 rounded-2xl border border-slate-700/50 overflow-hidden hover:border-teal-500/30 transition-all cursor-pointer"
+            className="group bg-slate-800/50 rounded-2xl border border-slate-700/50 overflow-hidden hover:border-teal-500/30 transition-all"
           >
             <div className="p-6">
               <div className="flex items-start gap-4 mb-4">
                 <img
                   src={team.logo}
                   alt={team.name}
-                  className="w-16 h-16 rounded-xl object-cover"
+                  className="w-16 h-16 rounded-xl object-cover cursor-pointer"
+                  onClick={() => setSelectedTeam(team)}
                 />
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white group-hover:text-teal-400 transition-colors">
+                  <h3 
+                    className="text-lg font-semibold text-white group-hover:text-teal-400 transition-colors cursor-pointer"
+                    onClick={() => setSelectedTeam(team)}
+                  >
                     {team.name}
                   </h3>
                   <div className="flex items-center gap-1 text-slate-400 text-sm">
@@ -184,9 +232,7 @@ export default function Teams() {
                   <p className="text-xl font-bold text-teal-400">¥{team.basePrice}</p>
                 </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
+                  onClick={() => handleOpenInquiry(team)}
                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-500/10 text-teal-400 text-sm font-medium rounded-lg hover:bg-teal-500/20 transition-colors"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -273,15 +319,141 @@ export default function Teams() {
                   <p className="text-3xl font-bold text-teal-400">¥{selectedTeam.basePrice}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700">
-                    查看作品
+                  <button 
+                    onClick={() => setSelectedTeam(null)}
+                    className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
+                  >
+                    关闭
                   </button>
-                  <button className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
-                    立即预约
+                  <button 
+                    onClick={() => {
+                      setSelectedTeam(null);
+                      handleOpenInquiry(selectedTeam);
+                    }}
+                    className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                  >
+                    立即询价
                   </button>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showInquiryModal && inquiryTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md">
+            <div className="p-6 border-b border-slate-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">向 {inquiryTeam.name} 询价</h2>
+                <button
+                  onClick={() => setShowInquiryModal(false)}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {inquirySubmitted ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-teal-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-8 h-8 text-teal-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">询价提交成功！</h3>
+                <p className="text-slate-400">团队将在24小时内回复您的询价，您可在报价比选页查看进度。</p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    关联需求
+                  </label>
+                  <select
+                    value={inquiryForm.requirementId}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, requirementId: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-teal-500"
+                  >
+                    <option value="">选择关联的需求（选填）</option>
+                    {requirements.map((req) => (
+                      <option key={req.id} value={req.id}>
+                        {req.location} - ¥{req.budget}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    套餐类型
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'basic', label: '基础版' },
+                      { id: 'standard', label: '标准版' },
+                      { id: 'premium', label: '高级版' },
+                    ].map((pkg) => (
+                      <button
+                        key={pkg.id}
+                        onClick={() => setInquiryForm({ ...inquiryForm, packageType: pkg.id as any })}
+                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          inquiryForm.packageType === pkg.id
+                            ? 'bg-teal-500/20 border border-teal-500 text-teal-400'
+                            : 'bg-slate-800 border border-slate-700 text-slate-300 hover:border-slate-600'
+                        }`}
+                      >
+                        {pkg.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    预算金额（元）
+                  </label>
+                  <input
+                    type="number"
+                    value={inquiryForm.budget}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, budget: e.target.value })}
+                    placeholder="请输入您的预算"
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    补充说明（选填）
+                  </label>
+                  <textarea
+                    value={inquiryForm.message}
+                    onChange={(e) => setInquiryForm({ ...inquiryForm, message: e.target.value })}
+                    placeholder="描述您的具体需求或问题..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {!inquirySubmitted && (
+              <div className="p-6 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowInquiryModal(false)}
+                  className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSubmitInquiry}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  提交询价
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

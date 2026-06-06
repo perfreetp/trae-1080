@@ -4,9 +4,10 @@ import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
 
 export default function Review() {
-  const { reviews, addReview } = useStore();
+  const { reviews, addReview, orders, addComplaint } = useStore();
   const [activeTab, setActiveTab] = useState<'review' | 'complaint'>('review');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [complaintSuccess, setComplaintSuccess] = useState(false);
 
   const [reviewForm, setReviewForm] = useState({
     professionalism: 5,
@@ -45,6 +46,48 @@ export default function Review() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
+  const handleSubmitComplaint = () => {
+    if (!complaintForm.orderId || !complaintForm.reason || !complaintForm.description) {
+      return;
+    }
+
+    const complaint = {
+      reason: complaintForm.reason,
+      evidence: [],
+      status: 'pending' as const,
+    };
+
+    const existingReview = reviews.find((r) => r.orderId === complaintForm.orderId);
+
+    if (existingReview) {
+      addComplaint(existingReview.id, complaint);
+    } else {
+      const order = orders.find((o) => o.id === complaintForm.orderId);
+      const newReview = {
+        id: `rev-${Date.now()}`,
+        orderId: complaintForm.orderId,
+        userId: 'user-001',
+        teamId: order?.teamId || 'team-001',
+        teamName: order?.teamName || '未知团队',
+        professionalism: 0,
+        timeliness: 0,
+        communication: 0,
+        overallRating: 0,
+        comment: '',
+        complaint,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+      addReview(newReview);
+    }
+
+    setComplaintSuccess(true);
+    
+    setTimeout(() => {
+      setComplaintSuccess(false);
+      setComplaintForm({ orderId: '', reason: '', description: '' });
+    }, 2000);
+  };
+
   return (
     <div>
       <div className="mb-8">
@@ -56,6 +99,13 @@ export default function Review() {
         <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
           <Check className="w-5 h-5 text-emerald-400" />
           <span className="text-emerald-400 font-medium">评价提交成功！感谢您的反馈。</span>
+        </div>
+      )}
+
+      {complaintSuccess && (
+        <div className="mb-6 p-4 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center gap-3">
+          <Check className="w-5 h-5 text-teal-400" />
+          <span className="text-teal-400 font-medium">投诉提交成功！我们会在24小时内处理您的投诉。</span>
         </div>
       )}
 
@@ -126,7 +176,7 @@ export default function Review() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     评价内容
                   </label>
                   <textarea
@@ -139,7 +189,7 @@ export default function Review() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     上传图片（选填）
                   </label>
                   <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-teal-500/50 transition-colors cursor-pointer">
@@ -165,7 +215,7 @@ export default function Review() {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     相关订单
                   </label>
                   <select
@@ -174,14 +224,16 @@ export default function Review() {
                     className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-teal-500"
                   >
                     <option value="">请选择相关订单</option>
-                    <option value="order-001">订单 #order-001 - 天际影像团队</option>
-                    <option value="order-002">订单 #order-002 - 云翼航拍工作室</option>
-                    <option value="order-003">订单 #order-003 - 青鸟航拍</option>
+                    {orders.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        订单 #{order.id} - {order.teamName}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     投诉原因
                   </label>
                   <select
@@ -198,7 +250,7 @@ export default function Review() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     详细描述
                   </label>
                   <textarea
@@ -211,7 +263,7 @@ export default function Review() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     上传证据（选填）
                   </label>
                   <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-teal-500/50 transition-colors cursor-pointer">
@@ -220,7 +272,11 @@ export default function Review() {
                   </div>
                 </div>
 
-                <button className="w-full inline-flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
+                <button 
+                  onClick={handleSubmitComplaint}
+                  disabled={!complaintForm.orderId || !complaintForm.reason || !complaintForm.description}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <AlertCircle className="w-5 h-5" />
                   提交投诉
                 </button>
@@ -231,8 +287,8 @@ export default function Review() {
 
         <div className="space-y-6">
           <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">我的评价</h3>
-            <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white mb-4">我的评价 / 投诉记录</h3>
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
               {reviews.map((review) => (
                 <div
                   key={review.id}
@@ -251,22 +307,33 @@ export default function Review() {
                   <p className="text-slate-400 text-sm line-clamp-2">{review.comment}</p>
                   {review.complaint && (
                     <div className="mt-3 pt-3 border-t border-slate-700">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md ${
-                          review.complaint.status === 'pending'
-                            ? 'bg-amber-500/10 text-amber-400'
-                            : review.complaint.status === 'processing'
-                            ? 'bg-blue-500/10 text-blue-400'
-                            : 'bg-emerald-500/10 text-emerald-400'
-                        }`}
-                      >
-                        投诉：
-                        {review.complaint.status === 'pending'
-                          ? '待处理'
-                          : review.complaint.status === 'processing'
-                          ? '处理中'
-                          : '已解决'}
-                      </span>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500">投诉原因</span>
+                          <span className="text-slate-300">
+                            {review.complaint.reason === 'quality' ? '拍摄质量问题' :
+                             review.complaint.reason === 'delay' ? '交付延误' :
+                             review.complaint.reason === 'attitude' ? '服务态度问题' : '其他问题'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md ${
+                              review.complaint.status === 'pending'
+                                ? 'bg-amber-500/10 text-amber-400'
+                                : review.complaint.status === 'processing'
+                                ? 'bg-blue-500/10 text-blue-400'
+                                : 'bg-emerald-500/10 text-emerald-400'
+                            }`}
+                          >
+                            {review.complaint.status === 'pending'
+                              ? '待处理'
+                              : review.complaint.status === 'processing'
+                              ? '处理中'
+                              : '已解决'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

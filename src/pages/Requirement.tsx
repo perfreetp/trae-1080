@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Clock, DollarSign, Upload, FileText, Send, Check, Sparkles } from 'lucide-react';
+import { MapPin, Calendar, Clock, DollarSign, Upload, FileText, Send, Check, Sparkles, X, Image as ImageIcon } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import type { Requirement } from '@/types';
 
 const categories = [
   { id: 'wedding', label: '婚礼航拍' },
@@ -11,6 +13,8 @@ const categories = [
 
 export default function Requirement() {
   const navigate = useNavigate();
+  const { addRequirement, requirements } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     location: '',
@@ -21,6 +25,7 @@ export default function Requirement() {
     category: '',
     description: '',
     referenceImages: [] as string[],
+    styleNote: '',
   });
   const [submitted, setSubmitted] = useState(false);
 
@@ -28,7 +33,46 @@ export default function Requirement() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
+      if (formData.referenceImages.length >= 9) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          updateField('referenceImages', [...formData.referenceImages, result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = formData.referenceImages.filter((_, i) => i !== index);
+    updateField('referenceImages', newImages);
+  };
+
   const handleSubmit = () => {
+    const newRequirement: Requirement = {
+      id: `req-${Date.now()}`,
+      userId: 'user-001',
+      location: formData.location,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      budget: Number(formData.budget) || 0,
+      category: (formData.category as Requirement['category']) || 'other',
+      description: formData.description,
+      referenceImages: formData.referenceImages,
+      status: 'published',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    addRequirement(newRequirement);
     setSubmitted(true);
     setTimeout(() => {
       navigate('/teams');
@@ -47,6 +91,9 @@ export default function Requirement() {
         <h2 className="text-3xl font-bold text-white mb-4">需求发布成功！</h2>
         <p className="text-slate-400 mb-8">
           系统正在为您智能匹配最合适的航拍团队，即将跳转到团队库...
+        </p>
+        <p className="text-slate-500 text-sm">
+          您当前共有 {requirements.length} 条需求记录
         </p>
       </div>
     );
@@ -191,17 +238,50 @@ export default function Requirement() {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-white mb-6">参考样片</h2>
 
-            <div className="border-2 border-dashed border-slate-700 rounded-xl p-12 text-center hover:border-teal-500/50 transition-colors cursor-pointer">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-teal-500/50 transition-colors cursor-pointer"
+            >
               <Upload className="w-12 h-12 text-slate-500 mx-auto mb-4" />
               <p className="text-slate-300 font-medium mb-2">拖拽或点击上传参考样片</p>
-              <p className="text-slate-500 text-sm">支持 JPG、PNG 格式，最多上传 9 张</p>
+              <p className="text-slate-500 text-sm">支持 JPG、PNG 格式，最多上传 9 张（已上传 {formData.referenceImages.length}/9）</p>
             </div>
+
+            {formData.referenceImages.length > 0 && (
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                {formData.referenceImages.map((img, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
+                    <img src={img} alt={`参考样片 ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(idx);
+                      }}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 风格备注（选填）
               </label>
               <textarea
+                value={formData.styleNote}
+                onChange={(e) => updateField('styleNote', e.target.value)}
                 placeholder="描述您期望的拍摄风格、色调或其他参考说明..."
                 rows={3}
                 className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors resize-none"
@@ -239,6 +319,32 @@ export default function Requirement() {
                     提交需求后，系统将根据您的位置、预算和拍摄类型，自动匹配 3-5
                     家最合适的航拍团队供您选择。
                   </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700">
+              <h3 className="font-semibold text-white mb-4">需求摘要</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">拍摄地点</span>
+                  <span className="text-white">{formData.location || '未填写'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">拍摄类型</span>
+                  <span className="text-white">{categories.find(c => c.id === formData.category)?.label || '未选择'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">拍摄时间</span>
+                  <span className="text-white">{formData.date ? `${formData.date} ${formData.startTime}-${formData.endTime}` : '未填写'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">预算金额</span>
+                  <span className="text-white">¥{formData.budget || '未填写'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">参考样片</span>
+                  <span className="text-white">{formData.referenceImages.length} 张</span>
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileCheck, CreditCard, Clock, CheckCircle, XCircle, Calendar, ChevronRight, Eye, FileText } from 'lucide-react';
+import { FileCheck, CreditCard, Clock, CheckCircle, XCircle, Calendar, ChevronRight, Eye, FileText, Check, X } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -12,9 +12,30 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 export default function Orders() {
-  const { orders } = useStore();
+  const { orders, signContract, payDeposit, updateOrderStatus } = useStore();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
-  const [showContract, setShowContract] = useState(false);
+  const [showContract, setShowContract] = useState<string | null>(null);
+  const [showPayModal, setShowPayModal] = useState<string | null>(null);
+  const [paySuccess, setPaySuccess] = useState(false);
+
+  const handleSignContract = (orderId: string) => {
+    signContract(orderId);
+  };
+
+  const handlePayDeposit = (orderId: string) => {
+    payDeposit(orderId);
+    setPaySuccess(true);
+    setTimeout(() => {
+      setPaySuccess(false);
+      setShowPayModal(null);
+    }, 2000);
+  };
+
+  const handleSignAndPay = (orderId: string) => {
+    signContract(orderId);
+    setShowContract(null);
+    setShowPayModal(orderId);
+  };
 
   return (
     <div>
@@ -88,10 +109,10 @@ export default function Orders() {
                       <p className="text-xl font-bold text-white">¥{order.totalAmount}</p>
                     </div>
                     <button
-                      onClick={() => setSelectedOrder(order.id)}
+                      onClick={() => setSelectedOrder(selectedOrder === order.id ? null : order.id)}
                       className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className={`w-5 h-5 transition-transform ${selectedOrder === order.id ? 'rotate-90' : ''}`} />
                     </button>
                   </div>
                 </div>
@@ -136,14 +157,29 @@ export default function Orders() {
                 {!order.contractSigned && order.status === 'pending' && (
                   <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-700/50">
                     <button
-                      onClick={() => setShowContract(true)}
+                      onClick={() => setShowContract(order.id)}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-700/50 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-colors"
                     >
                       <Eye className="w-4 h-4" />
                       查看合同
                     </button>
-                    <button className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
+                    <button 
+                      onClick={() => handleSignAndPay(order.id)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                    >
                       签署并支付定金
+                    </button>
+                  </div>
+                )}
+
+                {order.contractSigned && !order.depositPaid && order.status === 'pending' && (
+                  <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-700/50">
+                    <button 
+                      onClick={() => setShowPayModal(order.id)}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      支付定金 ¥{order.depositAmount}
                     </button>
                   </div>
                 )}
@@ -221,7 +257,7 @@ export default function Orders() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-white">航拍服务合同</h2>
                 <button
-                  onClick={() => setShowContract(false)}
+                  onClick={() => setShowContract(null)}
                   className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                 >
                   <XCircle className="w-5 h-5" />
@@ -243,11 +279,11 @@ export default function Orders() {
                 <strong className="text-white">第二条 费用与支付</strong>
               </p>
               <p>
-                2.1 本合同总金额为人民币 ¥4,800 元整。
+                2.1 本合同总金额为人民币 ¥{orders.find(o => o.id === showContract)?.totalAmount || 4800} 元整。
               </p>
               <p>
-                2.2 合同签署后，甲方应支付 30% 定金（¥1,440 元），剩余 70%
-                尾款（¥3,360 元）在素材交付确认后支付。
+                2.2 合同签署后，甲方应支付 30% 定金（¥{orders.find(o => o.id === showContract)?.depositAmount || 1440} 元），剩余 70%
+                尾款（¥{orders.find(o => o.id === showContract)?.balanceAmount || 3360} 元）在素材交付确认后支付。
               </p>
 
               <p>
@@ -272,15 +308,71 @@ export default function Orders() {
             </div>
             <div className="p-6 border-t border-slate-800 flex items-center justify-end gap-3">
               <button
-                onClick={() => setShowContract(false)}
+                onClick={() => setShowContract(null)}
                 className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
               >
                 关闭
               </button>
-              <button className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all">
+              <button 
+                onClick={() => handleSignContract(showContract)}
+                className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+              >
                 同意并签署
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showPayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md">
+            <div className="p-6 border-b border-slate-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">支付定金</h2>
+                <button
+                  onClick={() => setShowPayModal(null)}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            {paySuccess ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-8 h-8 text-emerald-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">支付成功！</h3>
+                <p className="text-slate-400">定金已支付，订单已确认。请等待团队联系您确认拍摄细节。</p>
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="text-center mb-6">
+                  <p className="text-slate-400 text-sm">支付金额</p>
+                  <p className="text-4xl font-bold text-teal-400 mt-2">
+                    ¥{orders.find(o => o.id === showPayModal)?.depositAmount || 1440}
+                  </p>
+                </div>
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
+                    <span className="text-slate-300">订单编号</span>
+                    <span className="text-white">{showPayModal}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
+                    <span className="text-slate-300">支付方式</span>
+                    <span className="text-white">微信支付</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handlePayDeposit(showPayModal)}
+                  className="w-full py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                >
+                  确认支付
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
