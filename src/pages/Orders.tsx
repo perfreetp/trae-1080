@@ -265,6 +265,28 @@ export default function Orders() {
               </div>
             </div>
             <div className="p-6 space-y-4 text-slate-300 text-sm">
+              <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+                <h4 className="text-white font-medium mb-3">订单详情</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-slate-500">服务团队</span>
+                    <p className="text-white mt-1">{orders.find(o => o.id === showContract)?.teamName || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">订单编号</span>
+                    <p className="text-white mt-1">{showContract}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">合同总金额</span>
+                    <p className="text-teal-400 font-medium mt-1">¥{orders.find(o => o.id === showContract)?.totalAmount || 4800}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">定金金额</span>
+                    <p className="text-white mt-1">¥{orders.find(o => o.id === showContract)?.depositAmount || 1440}</p>
+                  </div>
+                </div>
+              </div>
+
               <p>
                 <strong className="text-white">第一条 服务内容</strong>
               </p>

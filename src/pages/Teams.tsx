@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare, Send, Check } from 'lucide-react';
+import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare, Send, Check, FileText } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
 import type { Quote } from '@/types';
@@ -75,22 +75,47 @@ export default function Teams() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">航拍团队库</h1>
           <p className="text-slate-400">共找到 {filteredTeams.length} 家专业航拍团队</p>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-            showFilters
-              ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
-              : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
-          }`}
-        >
-          <Filter className="w-4 h-4" />
-          筛选
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              const req = requirements[0];
+              if (req) {
+                const categoryLabels: Record<string, string> = {
+                  wedding: '婚礼航拍',
+                  realestate: '地产航拍',
+                  event: '活动航拍',
+                  other: '其他',
+                };
+                alert(`需求详情：
+地点：${req.location}
+日期：${req.date} ${req.startTime}-${req.endTime}
+预算：¥${req.budget}
+类型：${categoryLabels[req.category] || '其他'}
+描述：${req.description}`);
+              }
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+          >
+            <FileText className="w-4 h-4" />
+            我的需求
+          </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              showFilters
+                ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30'
+                : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            筛选
+          </button>
+        </div>
       </div>
 
       {showFilters && (

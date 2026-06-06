@@ -73,6 +73,12 @@ export interface Schedule {
   shootDate: string;
   shootTime: string;
   shootList: { item: string; confirmed: boolean }[];
+  shootListConfirmed: boolean;
+  shootListModifyRequest?: {
+    reason: string;
+    newItems: { item: string; confirmed: boolean }[];
+    status: 'pending' | 'approved' | 'rejected';
+  };
   contactName: string;
   contactPhone: string;
   emergencyContact: string;
@@ -115,6 +121,7 @@ export interface Review {
   images?: string[];
   complaint?: {
     reason: string;
+    description: string;
     evidence: string[];
     status: 'pending' | 'processing' | 'resolved';
   };

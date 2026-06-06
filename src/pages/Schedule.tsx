@@ -1,19 +1,27 @@
 import { useState } from 'react';
-import { Calendar, Clock, User, Phone, AlertTriangle, Check, X, Edit3, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, User, Phone, AlertTriangle, Check, X, Edit3, ChevronRight, FileText } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 export default function Schedule() {
-  const { schedules, confirmShootList, submitReschedule } = useStore();
+  const { schedules, confirmShootList, submitReschedule, submitShootListModify } = useStore();
   const [showReschedule, setShowReschedule] = useState(false);
-  const [shootListConfirmed, setShootListConfirmed] = useState(false);
+  const [showModifyList, setShowModifyList] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({
     reason: '',
     newDate: '',
   });
   const [rescheduleSubmitted, setRescheduleSubmitted] = useState(false);
+  const [modifyForm, setModifyForm] = useState({
+    reason: '',
+  });
+  const [modifySubmitted, setModifySubmitted] = useState(false);
 
   const schedule = schedules[0];
-  const [shootList, setShootList] = useState(schedule?.shootList || []);
+  const currentSchedule = schedules.find(s => s.id === schedule?.id) || schedule;
+  const [shootList, setShootList] = useState(currentSchedule?.shootList || []);
+  const [modifyShootList, setModifyShootList] = useState(currentSchedule?.shootList || []);
+
+  const shootListConfirmed = currentSchedule?.shootListConfirmed || false;
 
   const toggleShootItem = (index: number) => {
     if (shootListConfirmed) return;
@@ -22,16 +30,21 @@ export default function Schedule() {
     );
   };
 
+  const toggleModifyShootItem = (index: number) => {
+    setModifyShootList((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, confirmed: !item.confirmed } : item))
+    );
+  };
+
   const handleConfirmShootList = () => {
-    if (schedule) {
-      confirmShootList(schedule.id, shootList);
-      setShootListConfirmed(true);
+    if (currentSchedule) {
+      confirmShootList(currentSchedule.id, shootList);
     }
   };
 
   const handleSubmitReschedule = () => {
-    if (schedule && rescheduleForm.reason && rescheduleForm.newDate) {
-      submitReschedule(schedule.id, {
+    if (currentSchedule && rescheduleForm.reason && rescheduleForm.newDate) {
+      submitReschedule(currentSchedule.id, {
         reason: rescheduleForm.reason,
         newDate: rescheduleForm.newDate,
         status: 'pending',
@@ -40,11 +53,32 @@ export default function Schedule() {
       setTimeout(() => {
         setShowReschedule(false);
         setRescheduleSubmitted(false);
+        setRescheduleForm({ reason: '', newDate: '' });
       }, 2000);
     }
   };
 
-  const currentSchedule = schedules.find(s => s.id === schedule?.id) || schedule;
+  const handleOpenModifyList = () => {
+    setModifyShootList(currentSchedule?.shootList || []);
+    setModifyForm({ reason: '' });
+    setModifySubmitted(false);
+    setShowModifyList(true);
+  };
+
+  const handleSubmitModifyList = () => {
+    if (currentSchedule && modifyForm.reason) {
+      submitShootListModify(currentSchedule.id, {
+        reason: modifyForm.reason,
+        newItems: modifyShootList,
+        status: 'pending',
+      });
+      setModifySubmitted(true);
+      setTimeout(() => {
+        setShowModifyList(false);
+        setModifySubmitted(false);
+      }, 2000);
+    }
+  };
 
   return (
     <div>
@@ -73,6 +107,29 @@ export default function Schedule() {
                     <div className="flex justify-between">
                       <span className="text-amber-200/70">审核状态</span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md bg-amber-500/20 text-amber-400">
+                        待审核
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentSchedule?.shootListModifyRequest && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-6">
+              <div className="flex items-start gap-3">
+                <FileText className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-blue-400 font-medium mb-2">清单修改申请审核中</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-blue-200/70">修改原因</span>
+                      <span className="text-white">{currentSchedule.shootListModifyRequest.reason}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-200/70">审核状态</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md bg-blue-500/20 text-blue-400">
                         待审核
                       </span>
                     </div>
@@ -166,23 +223,34 @@ export default function Schedule() {
                 <Edit3 className="w-4 h-4" />
                 申请改期
               </button>
-              {!shootListConfirmed ? (
-                <button 
-                  onClick={handleConfirmShootList}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
-                >
-                  <Check className="w-4 h-4" />
-                  确认拍摄清单
-                </button>
-              ) : (
-                <button 
-                  disabled
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500/20 text-emerald-400 font-medium rounded-lg cursor-default"
-                >
-                  <Check className="w-4 h-4" />
-                  拍摄清单已确认
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {shootListConfirmed && !currentSchedule?.shootListModifyRequest && (
+                  <button
+                    onClick={handleOpenModifyList}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-700/50 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    申请修改清单
+                  </button>
+                )}
+                {!shootListConfirmed ? (
+                  <button 
+                    onClick={handleConfirmShootList}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                  >
+                    <Check className="w-4 h-4" />
+                    确认拍摄清单
+                  </button>
+                ) : (
+                  <button 
+                    disabled
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-500/20 text-emerald-400 font-medium rounded-lg cursor-default"
+                  >
+                    <Check className="w-4 h-4" />
+                    拍摄清单已确认
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -335,6 +403,102 @@ export default function Schedule() {
                   onClick={handleSubmitReschedule}
                   disabled={!rescheduleForm.reason || !rescheduleForm.newDate}
                   className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  提交申请
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showModifyList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">申请修改清单</h2>
+                <button
+                  onClick={() => setShowModifyList(false)}
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {modifySubmitted ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-teal-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-8 h-8 text-teal-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">修改申请已提交！</h3>
+                <p className="text-slate-400">团队将在24小时内审核您的清单修改申请，请耐心等待。</p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">
+                    修改原因
+                  </label>
+                  <textarea
+                    value={modifyForm.reason}
+                    onChange={(e) => setModifyForm({ ...modifyForm, reason: e.target.value })}
+                    placeholder="请详细说明修改清单的原因..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-3">
+                    修改后的清单
+                  </label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    {modifyShootList.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => toggleModifyShootItem(idx)}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer ${
+                          item.confirmed
+                            ? 'bg-teal-500/10 border border-teal-500/30'
+                            : 'bg-slate-800 border border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        <div
+                          className={`w-5 h-5 rounded flex items-center justify-center ${
+                            item.confirmed
+                              ? 'bg-teal-500 text-white'
+                              : 'bg-slate-700 text-transparent'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </div>
+                        <span
+                          className={`${
+                            item.confirmed ? 'text-teal-400' : 'text-slate-300'
+                          }`}
+                        >
+                          {item.item}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!modifySubmitted && (
+              <div className="p-6 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowModifyList(false)}
+                  className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleSubmitModifyList}
+                  disabled={!modifyForm.reason}
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   提交申请
                 </button>

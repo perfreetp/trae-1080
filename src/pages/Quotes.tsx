@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Clock, Camera, Film, Check, X, Star, ChevronRight, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, Camera, Film, Check, X, Star, ChevronRight, Zap, FileText, MapPin, Calendar, DollarSign, Image as ImageIcon } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
 
@@ -10,13 +11,21 @@ const packages = [
 ];
 
 export default function Quotes() {
-  const { quotes, teams, updateQuoteStatus } = useStore();
+  const navigate = useNavigate();
+  const { quotes, teams, requirements, updateQuoteStatus, createOrderFromQuote } = useStore();
   const [selectedPackage, setSelectedPackage] = useState('standard');
+  const [showRequirementDetail, setShowRequirementDetail] = useState<string | null>(null);
 
   const getTeamById = (teamId: string) => teams.find((t) => t.id === teamId);
+  const getRequirementById = (reqId: string) => requirements.find((r) => r.id === reqId);
 
   const handleAccept = (quoteId: string) => {
-    updateQuoteStatus(quoteId, 'accepted');
+    const newOrder = createOrderFromQuote(quoteId);
+    if (newOrder) {
+      setTimeout(() => {
+        navigate('/orders');
+      }, 500);
+    }
   };
 
   const handleReject = (quoteId: string) => {
@@ -25,9 +34,18 @@ export default function Quotes() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">报价比选</h1>
-        <p className="text-slate-400">对比多家团队报价，选择最适合的方案</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">报价比选</h1>
+          <p className="text-slate-400">对比多家团队报价，选择最适合的方案</p>
+        </div>
+        <button
+          onClick={() => setShowRequirementDetail(requirements[0]?.id || null)}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-slate-300 font-medium rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
+        >
+          <FileText className="w-4 h-4" />
+          查看需求详情
+        </button>
       </div>
 
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-6 mb-8">
@@ -199,6 +217,103 @@ export default function Quotes() {
           );
         })}
       </div>
+
+      {showRequirementDetail && (() => {
+        const req = getRequirementById(showRequirementDetail);
+        if (!req) return null;
+
+        const categoryLabels: Record<string, string> = {
+          wedding: '婚礼航拍',
+          realestate: '地产航拍',
+          event: '活动航拍',
+          other: '其他',
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-slate-800">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white">需求详情</h2>
+                  <button
+                    onClick={() => setShowRequirementDetail(null)}
+                    className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">拍摄地点</p>
+                      <p className="text-white font-medium">{req.location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">拍摄日期</p>
+                      <p className="text-white font-medium">{req.date}</p>
+                      <p className="text-slate-400 text-xs">{req.startTime} - {req.endTime}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">预算范围</p>
+                      <p className="text-teal-400 font-medium">¥{req.budget}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">需求类型</p>
+                      <p className="text-white font-medium">{categoryLabels[req.category] || '其他'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-slate-500 text-sm mb-2">需求描述</p>
+                  <p className="text-slate-300">{req.description}</p>
+                </div>
+
+                {req.referenceImages && req.referenceImages.length > 0 && (
+                  <div>
+                    <p className="text-slate-500 text-sm mb-3">参考样片</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {req.referenceImages.map((img, idx) => (
+                        <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700">
+                          <img src={img} alt={`参考样片${idx + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-slate-800 flex items-center justify-end">
+                <button
+                  onClick={() => setShowRequirementDetail(null)}
+                  className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

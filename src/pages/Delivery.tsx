@@ -14,6 +14,7 @@ export default function Delivery() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
   const [downloadingWatermark, setDownloadingWatermark] = useState<string | null>(null);
+  const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
   const delivery = deliveries[0];
   const selectedLicense = delivery?.copyrightLicense || 'personal';
@@ -43,6 +44,8 @@ export default function Delivery() {
     setDownloadingWatermark(materialId);
     setTimeout(() => {
       setDownloadingWatermark(null);
+      setDownloadSuccess(materialId);
+      setTimeout(() => setDownloadSuccess(null), 2000);
     }, 1500);
   };
 
@@ -133,14 +136,20 @@ export default function Delivery() {
                         e.stopPropagation();
                         handleDownloadWatermark(material.id);
                       }}
-                      className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-teal-500/80 text-white text-xs hover:bg-teal-500 transition-colors flex items-center gap-1"
+                      className={`absolute bottom-2 right-2 px-2 py-1 rounded-md text-white text-xs transition-colors flex items-center gap-1 ${
+                        downloadSuccess === material.id
+                          ? 'bg-emerald-500/80'
+                          : 'bg-teal-500/80 hover:bg-teal-500'
+                      }`}
                     >
                       {downloadingWatermark === material.id ? (
+                        <Check className="w-3 h-3" />
+                      ) : downloadSuccess === material.id ? (
                         <Check className="w-3 h-3" />
                       ) : (
                         <Download className="w-3 h-3" />
                       )}
-                      水印
+                      {downloadSuccess === material.id ? '已下载' : '水印'}
                     </button>
                   )}
                 </div>
@@ -184,6 +193,34 @@ export default function Delivery() {
         </div>
 
         <div className="space-y-6">
+          <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">交付状态</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">交付状态</span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${
+                  delivery?.balancePaid 
+                    ? 'bg-emerald-500/10 text-emerald-400' 
+                    : 'bg-amber-500/10 text-amber-400'
+                }`}>
+                  {delivery?.balancePaid ? '已结清' : '待结清'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">版权授权</span>
+                <span className="text-white">
+                  {licenseOptions.find((o) => o.id === selectedLicense)?.label}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-400">高清下载</span>
+                <span className={delivery?.balancePaid ? 'text-emerald-400' : 'text-slate-500'}>
+                  {delivery?.balancePaid ? '已解锁' : '未解锁'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6">
             <h3 className="text-lg font-semibold text-white mb-4">费用结算</h3>
             <div className="space-y-3 mb-6">

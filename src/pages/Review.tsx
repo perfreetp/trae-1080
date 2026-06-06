@@ -53,6 +53,7 @@ export default function Review() {
 
     const complaint = {
       reason: complaintForm.reason,
+      description: complaintForm.description,
       evidence: [],
       status: 'pending' as const,
     };
@@ -298,16 +299,23 @@ export default function Review() {
                     <span className="text-white font-medium">{review.teamName}</span>
                     <span className="text-slate-500 text-xs">{review.createdAt}</span>
                   </div>
-                  <div className="flex items-center gap-1 mb-2">
-                    <StarRating rating={review.overallRating} readonly size={14} />
-                    <span className="text-slate-400 text-sm ml-2">
-                      {review.overallRating}分
-                    </span>
+                  <div className="text-xs text-slate-500 mb-2">
+                    订单号：{review.orderId}
                   </div>
-                  <p className="text-slate-400 text-sm line-clamp-2">{review.comment}</p>
+                  {review.overallRating > 0 && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <StarRating rating={review.overallRating} readonly size={14} />
+                      <span className="text-slate-400 text-sm ml-2">
+                        {review.overallRating}分
+                      </span>
+                    </div>
+                  )}
+                  {review.comment && (
+                    <p className="text-slate-400 text-sm line-clamp-2">{review.comment}</p>
+                  )}
                   {review.complaint && (
                     <div className="mt-3 pt-3 border-t border-slate-700">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-slate-500">投诉原因</span>
                           <span className="text-slate-300">
@@ -316,6 +324,12 @@ export default function Review() {
                              review.complaint.reason === 'attitude' ? '服务态度问题' : '其他问题'}
                           </span>
                         </div>
+                        {review.complaint.description && (
+                          <div className="text-xs">
+                            <span className="text-slate-500">投诉描述：</span>
+                            <span className="text-slate-400 ml-1 line-clamp-2">{review.complaint.description}</span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md ${

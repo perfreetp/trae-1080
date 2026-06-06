@@ -75,6 +75,20 @@ export const mockQuotes: Quote[] = [
 
 export const mockOrders: Order[] = [
   {
+    id: 'order-005',
+    requirementId: 'req-001',
+    teamId: 'team-001',
+    quoteId: 'quote-001',
+    teamName: '云翼航拍工作室',
+    contractSigned: false,
+    depositPaid: false,
+    depositAmount: 1440,
+    balanceAmount: 3360,
+    totalAmount: 4800,
+    status: 'pending',
+    createdAt: '2024-05-28',
+  },
+  {
     id: 'order-001',
     requirementId: 'req-002',
     teamId: 'team-002',
@@ -144,6 +158,7 @@ export const mockSchedules: Schedule[] = [
       { item: '周边配套设施', confirmed: false },
       { item: '小区内部园林', confirmed: false },
     ],
+    shootListConfirmed: false,
     contactName: '张经理',
     contactPhone: '138****8888',
     emergencyContact: '139****9999',

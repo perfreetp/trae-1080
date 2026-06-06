@@ -31,9 +31,11 @@ interface AppState {
   payBalance: (deliveryId: string) => void;
   updateCopyrightLicense: (deliveryId: string, license: 'personal' | 'commercial' | 'exclusive') => void;
   confirmShootList: (scheduleId: string, shootList: { item: string; confirmed: boolean }[]) => void;
+  submitShootListModify: (scheduleId: string, modifyRequest: { reason: string; newItems: { item: string; confirmed: boolean }[]; status: 'pending' | 'approved' | 'rejected' }) => void;
   submitReschedule: (scheduleId: string, reschedule: { reason: string; newDate: string; status: 'pending' | 'approved' | 'rejected' }) => void;
   addReview: (review: Review) => void;
-  addComplaint: (reviewId: string, complaint: { reason: string; evidence: string[]; status: 'pending' | 'processing' | 'resolved' }) => void;
+  addComplaint: (reviewId: string, complaint: { reason: string; description: string; evidence: string[]; status: 'pending' | 'processing' | 'resolved' }) => void;
+  createOrderFromQuote: (quoteId: string) => Order | null;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -101,7 +103,13 @@ export const useStore = create<AppState>((set) => ({
 
   confirmShootList: (scheduleId, shootList) => set((state) => ({
     schedules: state.schedules.map((s) =>
-      s.id === scheduleId ? { ...s, shootList } : s
+      s.id === scheduleId ? { ...s, shootList, shootListConfirmed: true } : s
+    ),
+  })),
+
+  submitShootListModify: (scheduleId, modifyRequest) => set((state) => ({
+    schedules: state.schedules.map((s) =>
+      s.id === scheduleId ? { ...s, shootListModifyRequest: modifyRequest } : s
     ),
   })),
 
@@ -120,4 +128,37 @@ export const useStore = create<AppState>((set) => ({
       r.id === reviewId ? { ...r, complaint } : r
     ),
   })),
+
+  createOrderFromQuote: (quoteId) => {
+    let newOrder: Order | null = null;
+    set((state) => {
+      const quote = state.quotes.find((q) => q.id === quoteId);
+      const team = state.teams.find((t) => t.id === quote?.teamId);
+      
+      if (!quote || !team) return state;
+
+      newOrder = {
+        id: `order-${Date.now()}`,
+        requirementId: quote.requirementId,
+        teamId: quote.teamId,
+        quoteId: quote.id,
+        teamName: team.name,
+        contractSigned: false,
+        depositPaid: false,
+        depositAmount: Math.round(quote.totalPrice * 0.3),
+        balanceAmount: Math.round(quote.totalPrice * 0.7),
+        totalAmount: quote.totalPrice,
+        status: 'pending',
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+
+      return {
+        orders: [...state.orders, newOrder],
+        quotes: state.quotes.map((q) =>
+          q.id === quoteId ? { ...q, status: 'accepted' } : q
+        ),
+      };
+    });
+    return newOrder;
+  },
 }));
