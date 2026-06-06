@@ -38,6 +38,18 @@ export interface Requirement {
   createdAt: string;
 }
 
+export interface Inquiry {
+  id: string;
+  teamId: string;
+  teamName: string;
+  requirementId: string;
+  packageType: 'basic' | 'standard' | 'premium';
+  budget: string;
+  message?: string;
+  status: 'pending' | 'replied' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
 export interface Quote {
   id: string;
   teamId: string;
@@ -50,6 +62,7 @@ export interface Quote {
   totalPrice: number;
   status: 'pending' | 'accepted' | 'rejected';
   includes: string[];
+  inquiryId?: string;
 }
 
 export interface Order {
@@ -58,6 +71,10 @@ export interface Order {
   teamId: string;
   quoteId: string;
   teamName: string;
+  requirementLocation?: string;
+  requirementDate?: string;
+  requirementStartTime?: string;
+  requirementEndTime?: string;
   contractSigned: boolean;
   depositPaid: boolean;
   depositAmount: number;

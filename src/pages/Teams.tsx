@@ -5,7 +5,8 @@ import StarRating from '@/components/StarRating';
 import type { Quote } from '@/types';
 
 export default function Teams() {
-  const { teams, setSelectedTeam, selectedTeam, addQuote, requirements } = useStore();
+  const { teams, setSelectedTeam, selectedTeam, addInquiry, requirements } = useStore();
+  const latestRequirement = requirements.length > 0 ? requirements[requirements.length - 1] : null;
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showInquiryModal, setShowInquiryModal] = useState(false);
@@ -42,30 +43,28 @@ export default function Teams() {
     setInquiryTeam(team);
     setShowInquiryModal(true);
     setInquirySubmitted(false);
+    if (latestRequirement) {
+      setInquiryForm((prev) => ({
+        ...prev,
+        requirementId: latestRequirement.id,
+        budget: String(latestRequirement.budget),
+      }));
+    }
   };
 
   const handleSubmitInquiry = () => {
     if (!inquiryTeam) return;
 
-    const newQuote: Quote = {
-      id: `quote-${Date.now()}`,
+    addInquiry({
       teamId: inquiryTeam.id,
-      requirementId: inquiryForm.requirementId || requirements[0]?.id || 'req-001',
+      teamName: inquiryTeam.name,
+      requirementId: inquiryForm.requirementId || latestRequirement?.id || requirements[0]?.id || 'req-001',
       packageType: inquiryForm.packageType,
-      flightHours: inquiryForm.packageType === 'basic' ? 2 : inquiryForm.packageType === 'standard' ? 4 : 6,
-      cameras: inquiryForm.packageType === 'basic' ? 1 : inquiryForm.packageType === 'standard' ? 2 : 3,
-      postProduction: inquiryForm.packageType !== 'basic',
-      deliveryDays: inquiryForm.packageType === 'basic' ? 5 : inquiryForm.packageType === 'standard' ? 7 : 10,
-      totalPrice: Number(inquiryForm.budget) || inquiryTeam.basePrice,
+      budget: inquiryForm.budget || String(latestRequirement?.budget || '5000'),
+      message: inquiryForm.message,
       status: 'pending',
-      includes: inquiryForm.packageType === 'basic' 
-        ? ['2小时飞行时间', '单机位拍摄', '原片全部交付', '5天交付']
-        : inquiryForm.packageType === 'standard'
-        ? ['4小时飞行时间', '双机位拍摄', '精修30张照片', '3分钟剪辑视频', '7天交付']
-        : ['6小时飞行时间', '三机位电影级拍摄', '精修50张照片', '5分钟电影级剪辑', '10天交付', '版权授权'],
-    };
+    });
 
-    addQuote(newQuote);
     setInquirySubmitted(true);
     setTimeout(() => {
       setShowInquiryModal(false);

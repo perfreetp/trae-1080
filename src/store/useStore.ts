@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Team, Requirement, Quote, Order, Schedule, Delivery, Review, PortfolioItem } from '@/types';
+import type { Team, Requirement, Inquiry, Quote, Order, Schedule, Delivery, Review, PortfolioItem } from '@/types';
 import { mockTeams } from '@/data/teams';
 import { mockPortfolio } from '@/data/portfolio';
 import { mockRequirements, mockQuotes, mockOrders, mockSchedules, mockDeliveries, mockReviews } from '@/data';
@@ -8,6 +8,7 @@ interface AppState {
   teams: Team[];
   portfolio: PortfolioItem[];
   requirements: Requirement[];
+  inquiries: Inquiry[];
   quotes: Quote[];
   orders: Order[];
   schedules: Schedule[];
@@ -33,6 +34,7 @@ interface AppState {
   confirmShootList: (scheduleId: string, shootList: { item: string; confirmed: boolean }[]) => void;
   submitShootListModify: (scheduleId: string, modifyRequest: { reason: string; newItems: { item: string; confirmed: boolean }[]; status: 'pending' | 'approved' | 'rejected' }) => void;
   submitReschedule: (scheduleId: string, reschedule: { reason: string; newDate: string; status: 'pending' | 'approved' | 'rejected' }) => void;
+  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt'>) => void;
   addReview: (review: Review) => void;
   addComplaint: (reviewId: string, complaint: { reason: string; description: string; evidence: string[]; status: 'pending' | 'processing' | 'resolved' }) => void;
   createOrderFromQuote: (quoteId: string) => Order | null;
@@ -42,6 +44,7 @@ export const useStore = create<AppState>((set) => ({
   teams: mockTeams,
   portfolio: mockPortfolio,
   requirements: mockRequirements,
+  inquiries: [],
   quotes: mockQuotes,
   orders: mockOrders,
   schedules: mockSchedules,
@@ -59,6 +62,17 @@ export const useStore = create<AppState>((set) => ({
   
   addRequirement: (req) => set((state) => ({
     requirements: [...state.requirements, req],
+  })),
+
+  addInquiry: (inquiry) => set((state) => ({
+    inquiries: [
+      ...state.inquiries,
+      {
+        ...inquiry,
+        id: `inquiry-${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0],
+      },
+    ],
   })),
   
   updateQuoteStatus: (quoteId, status) => set((state) => ({
@@ -134,6 +148,7 @@ export const useStore = create<AppState>((set) => ({
     set((state) => {
       const quote = state.quotes.find((q) => q.id === quoteId);
       const team = state.teams.find((t) => t.id === quote?.teamId);
+      const requirement = state.requirements.find((r) => r.id === quote?.requirementId);
       
       if (!quote || !team) return state;
 
@@ -143,6 +158,10 @@ export const useStore = create<AppState>((set) => ({
         teamId: quote.teamId,
         quoteId: quote.id,
         teamName: team.name,
+        requirementLocation: requirement?.location,
+        requirementDate: requirement?.date,
+        requirementStartTime: requirement?.startTime,
+        requirementEndTime: requirement?.endTime,
         contractSigned: false,
         depositPaid: false,
         depositAmount: Math.round(quote.totalPrice * 0.3),

@@ -33,8 +33,9 @@ export default function Orders() {
 
   const handleSignAndPay = (orderId: string) => {
     signContract(orderId);
+    payDeposit(orderId);
     setShowContract(null);
-    setShowPayModal(orderId);
+    setShowPayModal(null);
   };
 
   return (
@@ -187,6 +188,40 @@ export default function Orders() {
 
               {selectedOrder === order.id && (
                 <div className="px-6 pb-6 pt-2 border-t border-slate-700/50">
+                  {(order.requirementLocation || order.requirementDate) && (
+                    <div className="bg-slate-900/50 rounded-lg p-4 mb-4">
+                      <h4 className="text-sm font-medium text-slate-300 mb-3">需求信息</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {order.requirementLocation && (
+                          <div>
+                            <span className="text-slate-500">拍摄地点</span>
+                            <p className="text-white mt-1">{order.requirementLocation}</p>
+                          </div>
+                        )}
+                        {order.requirementDate && (
+                          <div>
+                            <span className="text-slate-500">拍摄日期</span>
+                            <p className="text-white mt-1">{order.requirementDate}</p>
+                          </div>
+                        )}
+                        {(order.requirementStartTime || order.requirementEndTime) && (
+                          <div>
+                            <span className="text-slate-500">拍摄时段</span>
+                            <p className="text-white mt-1">
+                              {order.requirementStartTime} - {order.requirementEndTime}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-slate-500">订单金额</span>
+                          <p className="text-teal-400 font-medium mt-1">¥{order.totalAmount}</p>
+                          <p className="text-slate-500 text-xs mt-0.5">
+                            定金 ¥{order.depositAmount} / 尾款 ¥{order.balanceAmount}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-slate-900/50 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-slate-300 mb-4">订单进度</h4>
                     <div className="flex items-center">
