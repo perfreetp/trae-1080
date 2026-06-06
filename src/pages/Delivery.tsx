@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, Eye, Image as ImageIcon, Video, Check, X, CreditCard, FileCheck, Lock, Unlock } from 'lucide-react';
+import { Download, Eye, Image as ImageIcon, Video, Check, X, CreditCard, FileCheck, Lock, Unlock, Clock } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 
 const licenseOptions = [
@@ -9,14 +9,16 @@ const licenseOptions = [
 ];
 
 export default function Delivery() {
-  const { deliveries, payBalance, updateCopyrightLicense } = useStore();
+  const { deliveries, orders, payBalance, updateCopyrightLicense } = useStore();
+  const [selectedOrderId, setSelectedOrderId] = useState(orders.length > 0 ? orders[0].id : '');
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
   const [paySuccess, setPaySuccess] = useState(false);
   const [downloadingWatermark, setDownloadingWatermark] = useState<string | null>(null);
   const [downloadSuccess, setDownloadSuccess] = useState<string | null>(null);
 
-  const delivery = deliveries[0];
+  const delivery = deliveries.find(d => d.orderId === selectedOrderId);
+  const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const selectedLicense = delivery?.copyrightLicense || 'personal';
 
   const licensePrice = licenseOptions.find((o) => o.id === selectedLicense)?.price || 0;
@@ -66,9 +68,54 @@ export default function Delivery() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">素材交付</h1>
-        <p className="text-slate-400">预览、下载拍摄素材，结算尾款</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">素材交付</h1>
+            <p className="text-slate-400">预览、下载拍摄素材，结算尾款</p>
+          </div>
+          {orders.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">选择订单：</span>
+              <select
+                value={selectedOrderId}
+                onChange={(e) => setSelectedOrderId(e.target.value)}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-teal-500"
+              >
+                {orders.map((ord) => (
+                  <option key={ord.id} value={ord.id}>
+                    {ord.teamName} - {ord.requirementLocation || ord.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
+
+      {!delivery && (
+        <div className="bg-slate-800/50 rounded-2xl border border-slate-700/50 p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-8 h-8 text-slate-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">等待交付</h3>
+          <p className="text-slate-400 mb-4">
+            该订单的拍摄素材还未交付，请耐心等待团队完成拍摄和后期处理
+          </p>
+          {selectedOrder && (
+            <div className="inline-block px-4 py-2 bg-slate-700/50 rounded-lg">
+              <p className="text-slate-300 text-sm">
+                订单状态：<span className="text-purple-400 font-medium">
+                  {selectedOrder.status === 'confirmed' ? '待拍摄' : 
+                   selectedOrder.status === 'shooting' ? '拍摄中' : 
+                   selectedOrder.status === 'pending' ? '待确认' : selectedOrder.status}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {delivery && (
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
@@ -328,8 +375,9 @@ export default function Delivery() {
           )}
         </div>
       </div>
+      )}
 
-      {selectedMaterial && (
+      {selectedMaterial && delivery && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <button
             onClick={() => setSelectedMaterial(null)}

@@ -3,9 +3,10 @@ import { Calendar, Clock, User, Phone, AlertTriangle, Check, X, Edit3, ChevronRi
 import { useStore } from '@/store/useStore';
 
 export default function Schedule() {
-  const { schedules, confirmShootList, submitReschedule, submitShootListModify } = useStore();
+  const { schedules, orders, confirmShootList, submitReschedule, submitShootListModify } = useStore();
   const [showReschedule, setShowReschedule] = useState(false);
   const [showModifyList, setShowModifyList] = useState(false);
+  const [selectedScheduleId, setSelectedScheduleId] = useState(schedules.length > 0 ? schedules[0].id : '');
   const [rescheduleForm, setRescheduleForm] = useState({
     reason: '',
     newDate: '',
@@ -16,8 +17,8 @@ export default function Schedule() {
   });
   const [modifySubmitted, setModifySubmitted] = useState(false);
 
-  const schedule = schedules[0];
-  const currentSchedule = schedules.find(s => s.id === schedule?.id) || schedule;
+  const currentSchedule = schedules.find(s => s.id === selectedScheduleId) || schedules[0];
+  const currentOrder = currentSchedule ? orders.find(o => o.id === currentSchedule.orderId) : null;
   const [shootList, setShootList] = useState(currentSchedule?.shootList || []);
   const [modifyShootList, setModifyShootList] = useState(currentSchedule?.shootList || []);
 
@@ -83,8 +84,38 @@ export default function Schedule() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">拍摄日程</h1>
-        <p className="text-slate-400">管理拍摄时间、确认拍摄清单</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">拍摄日程</h1>
+            <p className="text-slate-400">管理拍摄时间、确认拍摄清单</p>
+          </div>
+          {schedules.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">选择订单：</span>
+              <select
+                value={selectedScheduleId}
+                onChange={(e) => {
+                  setSelectedScheduleId(e.target.value);
+                  const sch = schedules.find(s => s.id === e.target.value);
+                  if (sch) {
+                    setShootList(sch.shootList);
+                    setModifyShootList(sch.shootList);
+                  }
+                }}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-teal-500"
+              >
+                {schedules.map((sch) => {
+                  const ord = orders.find(o => o.id === sch.orderId);
+                  return (
+                    <option key={sch.id} value={sch.id}>
+                      {ord?.teamName || '未知团队'} - {sch.shootDate}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,8 +1,15 @@
 import { useState } from 'react';
-import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare, Send, Check, FileText } from 'lucide-react';
+import { Search, MapPin, Shield, Award, Filter, X, ChevronDown, MessageSquare, Send, Check, FileText, Calendar, DollarSign, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
 import type { Quote } from '@/types';
+
+const categoryLabels: Record<string, string> = {
+  wedding: '婚礼航拍',
+  realestate: '地产航拍',
+  event: '活动航拍',
+  other: '其他',
+};
 
 export default function Teams() {
   const { teams, setSelectedTeam, selectedTeam, addInquiry, requirements } = useStore();
@@ -12,6 +19,8 @@ export default function Teams() {
   const [showInquiryModal, setShowInquiryModal] = useState(false);
   const [inquiryTeam, setInquiryTeam] = useState<typeof teams[0] | null>(null);
   const [inquirySubmitted, setInquirySubmitted] = useState(false);
+  const [showRequirementPanel, setShowRequirementPanel] = useState(false);
+  const [currentReqIndex, setCurrentReqIndex] = useState(requirements.length > 0 ? requirements.length - 1 : 0);
   const [filters, setFilters] = useState({
     location: '',
     minPrice: '',
@@ -82,26 +91,18 @@ export default function Teams() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              const req = requirements[0];
-              if (req) {
-                const categoryLabels: Record<string, string> = {
-                  wedding: '婚礼航拍',
-                  realestate: '地产航拍',
-                  event: '活动航拍',
-                  other: '其他',
-                };
-                alert(`需求详情：
-地点：${req.location}
-日期：${req.date} ${req.startTime}-${req.endTime}
-预算：¥${req.budget}
-类型：${categoryLabels[req.category] || '其他'}
-描述：${req.description}`);
-              }
+              setShowRequirementPanel(true);
+              setCurrentReqIndex(requirements.length > 0 ? requirements.length - 1 : 0);
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
           >
             <FileText className="w-4 h-4" />
             我的需求
+            {requirements.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-teal-500/20 text-teal-400 text-xs flex items-center justify-center">
+                {requirements.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -481,6 +482,134 @@ export default function Teams() {
           </div>
         </div>
       )}
+
+      {showRequirementPanel && requirements.length > 0 && (() => {
+        const currentReq = requirements[currentReqIndex];
+        if (!currentReq) return null;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setCurrentReqIndex((prev) => Math.max(0, prev - 1))}
+                      disabled={currentReqIndex === 0}
+                      className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">我的需求</h2>
+                      <p className="text-slate-400 text-sm">
+                        {currentReqIndex + 1} / {requirements.length}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCurrentReqIndex((prev) => Math.min(requirements.length - 1, prev + 1))}
+                      disabled={currentReqIndex === requirements.length - 1}
+                      className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowRequirementPanel(false)}
+                    className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">拍摄地点</p>
+                      <p className="text-white font-medium">{currentReq.location}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">拍摄日期</p>
+                      <p className="text-white font-medium">{currentReq.date}</p>
+                      <p className="text-slate-400 text-xs">{currentReq.startTime} - {currentReq.endTime}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">预算范围</p>
+                      <p className="text-teal-400 font-medium">¥{currentReq.budget}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-5 h-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-sm">需求类型</p>
+                      <p className="text-white font-medium">{categoryLabels[currentReq.category] || '其他'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-slate-500 text-sm mb-2">需求描述</p>
+                  <p className="text-slate-300">{currentReq.description}</p>
+                </div>
+
+                {currentReq.referenceImages && currentReq.referenceImages.length > 0 && (
+                  <div>
+                    <p className="text-slate-500 text-sm mb-3">参考样片 ({currentReq.referenceImages.length})</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {currentReq.referenceImages.map((img, idx) => (
+                        <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-slate-700">
+                          <img src={img} alt={`参考样片${idx + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t border-slate-700/50">
+                  <p className="text-slate-500 text-xs">
+                    创建时间：{currentReq.createdAt}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  onClick={() => setShowRequirementPanel(false)}
+                  className="px-6 py-2.5 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRequirementPanel(false);
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-medium rounded-lg hover:from-teal-600 hover:to-cyan-600 transition-all"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  找团队询价
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

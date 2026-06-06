@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Camera, Film, Check, X, Star, ChevronRight, Zap, FileText, MapPin, Calendar, DollarSign, Image as ImageIcon, MessageSquare } from 'lucide-react';
+import { Clock, Camera, Film, Check, X, Star, ChevronRight, Zap, FileText, MapPin, Calendar, DollarSign, Image as ImageIcon, MessageSquare, Send } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import StarRating from '@/components/StarRating';
 
@@ -26,7 +26,7 @@ const inquiryStatusLabels: Record<string, { label: string; color: string; bg: st
 
 export default function Quotes() {
   const navigate = useNavigate();
-  const { quotes, teams, requirements, inquiries, updateQuoteStatus, createOrderFromQuote } = useStore();
+  const { quotes, teams, requirements, inquiries, orders, updateQuoteStatus, createOrderFromQuote, simulateTeamReply } = useStore();
   const [selectedPackage, setSelectedPackage] = useState('standard');
   const latestRequirement = requirements.length > 0 ? requirements[requirements.length - 1] : null;
   const [showRequirementDetail, setShowRequirementDetail] = useState<string | null>(
@@ -35,6 +35,20 @@ export default function Quotes() {
 
   const getTeamById = (teamId: string) => teams.find((t) => t.id === teamId);
   const getRequirementById = (reqId: string) => requirements.find((r) => r.id === reqId);
+
+  const acceptedQuoteIds = useMemo(() => {
+    return new Set(orders.map((o) => o.quoteId));
+  }, [orders]);
+
+  const acceptedQuotesByRequirement = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    quotes.forEach((quote) => {
+      if (quote.status === 'accepted' || acceptedQuoteIds.has(quote.id)) {
+        map[quote.requirementId] = true;
+      }
+    });
+    return map;
+  }, [quotes, acceptedQuoteIds]);
 
   const groupedData = useMemo(() => {
     const groups: Record<string, { requirement: typeof requirements[0] | null; inquiries: typeof inquiries; quotes: typeof quotes }> = {};
@@ -73,12 +87,12 @@ export default function Quotes() {
   }, [requirements, inquiries, quotes, getRequirementById]);
 
   const hasAcceptedQuote = useMemo(() => {
-    return quotes.some((q) => q.status === 'accepted');
-  }, [quotes]);
+    return quotes.some((q) => q.status === 'accepted') || acceptedQuoteIds.size > 0;
+  }, [quotes, acceptedQuoteIds]);
 
   const handleAccept = (quoteId: string) => {
     const quote = quotes.find((q) => q.id === quoteId);
-    if (!quote || quote.status === 'accepted') return;
+    if (!quote || quote.status === 'accepted' || acceptedQuoteIds.has(quoteId)) return;
     
     const newOrder = createOrderFromQuote(quoteId);
     if (newOrder) {
@@ -90,6 +104,10 @@ export default function Quotes() {
 
   const handleReject = (quoteId: string) => {
     updateQuoteStatus(quoteId, 'rejected');
+  };
+
+  const handleReplyInquiry = (inquiryId: string) => {
+    simulateTeamReply(inquiryId);
   };
 
   return (
@@ -140,7 +158,7 @@ export default function Quotes() {
           <div className="flex items-center gap-3">
             <Check className="w-5 h-5 text-teal-400 flex-shrink-0" />
             <div>
-              <p className="text-teal-400 font-medium">您已接受一份报价</p>
+              <p className="text-teal-400 font-medium">您已接受部分报价</p>
               <p className="text-teal-200/70 text-sm">已生成订单，请到合同订单页查看并签署合同</p>
             </div>
           </div>
@@ -150,14 +168,20 @@ export default function Quotes() {
       <div className="space-y-8">
         {Object.entries(groupedData).map(([reqId, data]) => {
           if (data.inquiries.length === 0 && data.quotes.length === 0) return null;
+          const hasAcceptedInThisRequirement = acceptedQuotesByRequirement[reqId];
 
           return (
             <div key={reqId}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-1 h-8 bg-teal-500 rounded-full" />
+                <div className={`w-1 h-8 rounded-full ${hasAcceptedInThisRequirement ? 'bg-teal-500' : 'bg-slate-600'}`} />
                 <div>
-                  <h2 className="text-lg font-semibold text-white">
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     {data.requirement?.location || '未命名需求'}
+                    {hasAcceptedInThisRequirement && (
+                      <span className="px-2 py-0.5 text-xs rounded-md bg-teal-500/20 text-teal-400">
+                        已确认
+                      </span>
+                    )}
                   </h2>
                   <p className="text-slate-400 text-sm">
                     {data.requirement ? `${categoryLabels[data.requirement.category] || '其他'} · ${data.requirement.date}` : `需求ID: ${reqId}`}
@@ -202,13 +226,36 @@ export default function Quotes() {
                                 </div>
                                 {inquiry.message && (
                                   <p className="text-slate-400 text-sm mt-2 line-clamp-2">
-                                    留言：{inquiry.message}
+                                    我的留言：{inquiry.message}
                                   </p>
+                                )}
+                                {inquiry.replyMessage && (
+                                  <div className="mt-3 p-3 bg-slate-900/50 rounded-lg">
+                                    <p className="text-blue-400 text-xs font-medium mb-1">团队回复</p>
+                                    <p className="text-slate-300 text-sm">{inquiry.replyMessage}</p>
+                                    {inquiry.quotePrice && (
+                                      <div className="flex items-center gap-4 mt-2 text-sm">
+                                        <span className="text-teal-400 font-medium">报价：¥{inquiry.quotePrice}</span>
+                                        {inquiry.quoteDeliveryDays && (
+                                          <span className="text-slate-400">{inquiry.quoteDeliveryDays}天交付</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
-                            <div className="text-right text-xs text-slate-500">
-                              {inquiry.createdAt}
+                            <div className="text-right">
+                              <p className="text-xs text-slate-500">{inquiry.createdAt}</p>
+                              {inquiry.status === 'pending' && (
+                                <button
+                                  onClick={() => handleReplyInquiry(inquiry.id)}
+                                  className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  模拟回复
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -229,14 +276,19 @@ export default function Quotes() {
                       const team = getTeamById(quote.teamId);
                       if (!team) return null;
 
+                      const hasOrder = acceptedQuoteIds.has(quote.id);
+                      const isDisabled = hasAcceptedInThisRequirement || quote.status === 'accepted' || hasOrder;
+
                       return (
                         <div
                           key={quote.id}
                           className={`bg-slate-800/50 rounded-2xl border overflow-hidden transition-all ${
-                            quote.status === 'accepted'
+                            quote.status === 'accepted' || hasOrder
                               ? 'border-teal-500/50 ring-1 ring-teal-500/20'
                               : quote.status === 'rejected'
                               ? 'border-red-500/30 opacity-60'
+                              : isDisabled
+                              ? 'border-slate-700/50 opacity-70'
                               : 'border-slate-700/50 hover:border-slate-600'
                           }`}
                         >
@@ -251,7 +303,12 @@ export default function Quotes() {
                                 <div>
                                   <div className="flex items-center gap-3">
                                     <h3 className="text-xl font-semibold text-white">{team.name}</h3>
-                                    {quote.status === 'accepted' && (
+                                    {hasOrder && (
+                                      <span className="px-2 py-1 text-xs rounded-md bg-teal-500/20 text-teal-400 font-medium">
+                                        已生成订单
+                                      </span>
+                                    )}
+                                    {quote.status === 'accepted' && !hasOrder && (
                                       <span className="px-2 py-1 text-xs rounded-md bg-teal-500/20 text-teal-400 font-medium">
                                         已接受
                                       </span>
@@ -343,7 +400,7 @@ export default function Quotes() {
                               </div>
                             </div>
 
-                            {quote.status === 'pending' && !hasAcceptedQuote && (
+                            {quote.status === 'pending' && !isDisabled && (
                               <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-700/50">
                                 <button
                                   onClick={() => handleReject(quote.id)}
@@ -362,10 +419,10 @@ export default function Quotes() {
                               </div>
                             )}
 
-                            {quote.status === 'pending' && hasAcceptedQuote && (
+                            {isDisabled && quote.status === 'pending' && (
                               <div className="mt-6 pt-6 border-t border-slate-700/50 flex items-center justify-end">
                                 <span className="text-slate-500 text-sm">
-                                  您已接受其他报价，该报价暂不可操作
+                                  {hasOrder ? '该报价已生成订单' : '该需求下已有确认报价'}
                                 </span>
                               </div>
                             )}

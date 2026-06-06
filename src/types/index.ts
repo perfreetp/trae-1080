@@ -47,7 +47,11 @@ export interface Inquiry {
   budget: string;
   message?: string;
   status: 'pending' | 'replied' | 'accepted' | 'rejected';
+  replyMessage?: string;
+  quotePrice?: number;
+  quoteDeliveryDays?: number;
   createdAt: string;
+  repliedAt?: string;
 }
 
 export interface Quote {
